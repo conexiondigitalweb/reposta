@@ -74,7 +74,9 @@ export default function Reprocesar() {
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [texto, setTexto] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingMsg, setLoadingMsg] = useState('')
   const [error, setError] = useState('')
+  const [transcriptSource, setTranscriptSource] = useState(null) // 'captions' | 'whisper'
   const [outputs, setOutputs] = useState(null)
   const [title, setTitle] = useState('')
 
@@ -89,7 +91,9 @@ export default function Reprocesar() {
 
     setError('')
     setOutputs(null)
+    setTranscriptSource(null)
     setLoading(true)
+    setLoadingMsg(tab === 'youtube' ? 'Extrayendo contenido del video...' : 'Preparando contenido...')
 
     try {
       // Si es YouTube, primero extraer transcript
@@ -108,6 +112,14 @@ export default function Reprocesar() {
           return
         }
         transcript = data.transcript
+        setTranscriptSource(data.source ?? null)
+        if (data.source === 'whisper') {
+          setLoadingMsg('Audio transcrito con IA — generando formatos...')
+        } else {
+          setLoadingMsg('Subtítulos extraídos — generando formatos...')
+        }
+      } else {
+        setLoadingMsg('Generando 6 formatos con IA...')
       }
 
       // Llamar a generate
@@ -258,7 +270,7 @@ export default function Reprocesar() {
           {loading ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              Transformando contenido...
+              {loadingMsg || 'Transformando contenido...'}
             </>
           ) : (
             <>
@@ -270,18 +282,32 @@ export default function Reprocesar() {
 
         {loading && (
           <p className="text-center text-xs text-gray-600 mt-3">
-            Estamos generando 6 formatos con IA — esto puede tardar entre 15 y 30 segundos.
+            {transcriptSource === 'whisper'
+              ? 'Transcribiendo audio con IA y generando formatos — puede tardar hasta 60 segundos.'
+              : 'Generando 6 formatos con IA — esto puede tardar entre 15 y 30 segundos.'}
           </p>
         )}
 
         {/* Resultados */}
         {outputs && (
           <div id="resultados" className="mt-10">
-            <div className="flex items-baseline justify-between mb-5">
+            <div className="flex items-start justify-between gap-3 mb-5">
               <h2 className="text-lg font-bold text-white">
                 {title || 'Resultados'}
               </h2>
-              <span className="text-xs text-gray-600">6 formatos generados</span>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-xs text-gray-600">6 formatos generados</span>
+                {transcriptSource === 'whisper' && (
+                  <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
+                    Transcrito con Whisper
+                  </span>
+                )}
+                {transcriptSource === 'captions' && (
+                  <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">
+                    Subtítulos nativos
+                  </span>
+                )}
+              </div>
             </div>
             <OutputCards outputs={outputs} planKey={planKey} />
           </div>
