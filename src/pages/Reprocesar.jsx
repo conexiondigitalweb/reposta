@@ -96,33 +96,54 @@ export default function Reprocesar() {
     setLoadingMsg(tab === 'youtube' ? 'Extrayendo contenido del video...' : 'Preparando contenido...')
 
     try {
-      // Si es YouTube, primero extraer transcript
+      // ── Pestaña texto: va directo a generate, sin pasar por transcribe ──────
       let transcript = texto
 
       if (tab === 'youtube') {
-        const r = await fetch('/api/transcribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: youtubeUrl.trim() }),
-        })
-        const data = await r.json()
-        if (!r.ok) {
-          setError(data.error ?? 'No pudimos extraer el contenido de ese video. Prueba pegando el texto directamente.')
+        // Timeout de 12s para Vercel Free (limite real ~10s + margen de red)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 12000)
+
+        let transcribeRes, transcribeData
+        try {
+          transcribeRes = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: youtubeUrl.trim() }),
+            signal: controller.signal,
+          })
+          transcribeData = await transcribeRes.json()
+        } catch (fetchErr) {
+          const isTimeout = fetchErr.name === 'AbortError'
+          setError(
+            isTimeout
+              ? 'La transcripción automática tardó demasiado. Copia el transcript manualmente desde YouTube (tres puntos → Mostrar transcript) y usa la pestaña "Pegar texto".'
+              : 'Error de conexión al extraer el video. Verifica tu internet e intenta de nuevo.'
+          )
+          setLoading(false)
+          return
+        } finally {
+          clearTimeout(timeoutId)
+        }
+
+        if (!transcribeRes.ok) {
+          setError(transcribeData.error ?? 'No pudimos extraer el contenido de ese video. Prueba con la pestaña "Pegar texto".')
           setLoading(false)
           return
         }
-        transcript = data.transcript
-        setTranscriptSource(data.source ?? null)
-        if (data.source === 'whisper') {
-          setLoadingMsg('Audio transcrito con IA — generando formatos...')
-        } else {
-          setLoadingMsg('Subtítulos extraídos — generando formatos...')
-        }
+
+        transcript = transcribeData.transcript
+        setTranscriptSource(transcribeData.source ?? null)
+        setLoadingMsg(
+          transcribeData.source === 'whisper'
+            ? 'Audio transcrito con IA — generando formatos...'
+            : 'Subtítulos extraídos — generando formatos...'
+        )
       } else {
         setLoadingMsg('Generando 6 formatos con IA...')
       }
 
-      // Llamar a generate
+      // ── Llamar a generate (texto o transcript) ───────────────────────────────
       const r = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -159,8 +180,13 @@ export default function Reprocesar() {
       setTimeout(() => {
         document.getElementById('resultados')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
-    } catch {
-      setError('Error de conexión. Verifica tu internet e intenta de nuevo.')
+    } catch (err) {
+      const isTimeout = err.name === 'AbortError'
+      setError(
+        isTimeout
+          ? 'La transcripción automática tardó demasiado. Copia el transcript manualmente desde YouTube (tres puntos → Mostrar transcript) y usa la pestaña "Pegar texto".'
+          : 'Error de conexión. Verifica tu internet e intenta de nuevo.'
+      )
     } finally {
       setLoading(false)
     }
@@ -215,8 +241,11 @@ export default function Reprocesar() {
                 placeholder="https://www.youtube.com/watch?v=..."
                 className="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
               />
-              <p className="text-xs text-gray-600">
-                Funciona con videos que tengan subtítulos / captions activados.
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Funciona con videos que tengan subtítulos activados.{' '}
+                <span className="text-gray-600">
+                  Si falla, copia el transcript desde YouTube (···&nbsp;→ Mostrar transcript) y pégalo en la otra pestaña.
+                </span>
               </p>
             </div>
           ) : (
