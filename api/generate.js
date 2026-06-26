@@ -116,6 +116,14 @@ export default async function handler(req, res) {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const effectiveBrandVoice = brandVoice || (profile.plan !== 'free' ? profile.brand_voice : null)
 
+  // Verificar que la API key esté presente antes de llamar
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('[generate] ANTHROPIC_API_KEY no está definida en las variables de entorno.')
+    return res.status(500).json({ error: 'Configuración incompleta del servidor.' })
+  }
+
+  console.log('[generate] Llamando a Anthropic. modelo=claude-sonnet-4-6 userId=' + userId)
+
   let raw
   try {
     const message = await anthropic.messages.create({
@@ -125,9 +133,23 @@ export default async function handler(req, res) {
       messages: [{ role: 'user', content: buildUserPrompt(transcript) }],
     })
     raw = message.content[0].text
+    console.log('[generate] Respuesta Anthropic OK. stop_reason=' + message.stop_reason)
   } catch (err) {
-    console.error('Anthropic error:', err)
-    return res.status(502).json({ error: 'Error al conectar con la IA. Intenta de nuevo.' })
+    // El SDK de Anthropic expone status y error body en propiedades específicas
+    const status   = err.status   ?? err.statusCode ?? 'unknown'
+    const errBody  = err.error    ?? err.body       ?? null
+    const message  = err.message  ?? String(err)
+    console.error('[generate] Anthropic error —', JSON.stringify({
+      status,
+      message,
+      error_type:  errBody?.type    ?? null,
+      error_msg:   errBody?.error?.message ?? errBody?.message ?? null,
+      raw_body:    typeof errBody === 'string' ? errBody.slice(0, 500) : JSON.stringify(errBody ?? '').slice(0, 500),
+    }))
+    return res.status(502).json({
+      error: 'Error al conectar con la IA. Intenta de nuevo.',
+      _debug: { status, message: message.slice(0, 200) },
+    })
   }
 
   // Parsear JSON — limpiar posibles bloques de código que la IA añada
@@ -157,7 +179,12 @@ export default async function handler(req, res) {
     .single()
 
   if (insertError) {
-    console.error('Insert error:', insertError)
+    console.error('[generate] Supabase insert error —', JSON.stringify({
+      code:    insertError.code,
+      message: insertError.message,
+      details: insertError.details,
+      hint:    insertError.hint,
+    }))
     return res.status(500).json({ error: 'Error al guardar la generación.' })
   }
 
