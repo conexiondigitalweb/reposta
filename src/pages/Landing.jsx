@@ -107,7 +107,7 @@ function NavBar() {
   return (
     <header className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur border-b border-gray-800">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <span className="font-bold text-white text-lg tracking-tight">Reposta</span>
+        <img src="/LogoReposta.png" alt="Reposta" className="h-8 w-auto" />
         <Link
           to="/login"
           className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -309,9 +309,10 @@ function FinalCTA() {
 function Footer() {
   return (
     <footer className="py-8 px-4 border-t border-gray-800 text-center">
-      <p className="text-xs text-gray-600">
-        © 2026 Reposta · Hecho para el mundo hispanohablante
-      </p>
+      <div className="flex flex-col items-center gap-3">
+        <img src="/Logo.png" alt="Reposta" className="h-7 w-auto opacity-50" />
+        <p className="text-xs text-gray-600">© 2026 Reposta · Hecho para el mundo hispanohablante</p>
+      </div>
     </footer>
   )
 }
