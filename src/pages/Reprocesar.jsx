@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { PLANS } from '../lib/plans'
@@ -58,6 +58,54 @@ function UsagePill({ used, limit }) {
   )
 }
 
+// ─── Loading progresivo ───────────────────────────────────────────────────────
+
+const FASES = [
+  { hasta: 10,  msg: 'Extrayendo transcript del video...' },
+  { hasta: 25,  msg: 'Analizando el contenido...' },
+  { hasta: 60,  msg: 'Generando tweets y posts de LinkedIn...' },
+  { hasta: 120, msg: 'Creando guiones de Reels y carrusel...' },
+  { hasta: Infinity, msg: 'Preparando newsletter y blog post...' },
+]
+
+// Progreso "suave": avanza rápido al principio y se frena al acercarse al 95%
+function calcPct(segundos) {
+  const tope = 140 // segundos en que llegaría al 95%
+  return Math.min(95, Math.round((1 - Math.exp(-3 * segundos / tope)) * 95))
+}
+
+function useProgressiveLoading(activo) {
+  const [segundos, setSegundos] = useState(0)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (activo) {
+      setSegundos(0)
+      ref.current = setInterval(() => setSegundos((s) => s + 1), 1000)
+    } else {
+      clearInterval(ref.current)
+      setSegundos(0)
+    }
+    return () => clearInterval(ref.current)
+  }, [activo])
+
+  const fase = FASES.find((f) => segundos < f.hasta) ?? FASES[FASES.length - 1]
+  const pct  = activo ? calcPct(segundos) : 0
+
+  return { msg: fase.msg, pct, segundos }
+}
+
+function ProgressBar({ pct }) {
+  return (
+    <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden mt-4">
+      <div
+        className="h-full bg-purple-500 rounded-full transition-all duration-1000 ease-out"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  )
+}
+
 // ─── Reprocesar ───────────────────────────────────────────────────────────────
 
 export default function Reprocesar() {
@@ -75,6 +123,7 @@ export default function Reprocesar() {
   const [texto, setTexto] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
+  const { msg: progressMsg, pct: progressPct } = useProgressiveLoading(loading)
   const [error, setError] = useState('')
   const [transcriptSource, setTranscriptSource] = useState(null) // 'captions' | 'whisper'
   const [outputs, setOutputs] = useState(null)
@@ -295,7 +344,7 @@ export default function Reprocesar() {
           {loading ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              {loadingMsg || 'Transformando contenido...'}
+              {loadingMsg || progressMsg}
             </>
           ) : (
             <>
@@ -306,9 +355,12 @@ export default function Reprocesar() {
         </button>
 
         {loading && (
-          <p className="text-center text-xs text-gray-600 mt-3">
-            {'Generando 6 formatos con IA — esto puede tardar entre 15 y 30 segundos.'}
-          </p>
+          <div className="mt-1">
+            <ProgressBar pct={progressPct} />
+            <p className="text-center text-xs text-gray-500 mt-2">
+              {progressMsg}
+            </p>
+          </div>
         )}
 
         {/* Resultados */}

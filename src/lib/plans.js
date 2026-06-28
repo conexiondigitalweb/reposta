@@ -2,7 +2,7 @@ export const PLANS = {
   free: {
     name: 'Explorador',
     price: 0,
-    monthlyGenerations: 3,
+    monthlyGenerations: 5,
     outputFormats: ['tweets', 'linkedin', 'reels', 'carousel'],
     historyDays: 7,
     brandVoice: false,

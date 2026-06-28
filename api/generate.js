@@ -63,7 +63,7 @@ Genera el siguiente JSON con exactamente esta estructura. No agregues texto fuer
 }
 
 const PLANS = {
-  free:    { monthlyGenerations: 3 },
+  free:    { monthlyGenerations: 5 },
   creator: { monthlyGenerations: 30 },
   agency:  { monthlyGenerations: Infinity },
 }
