@@ -100,9 +100,9 @@ export default function Reprocesar() {
       let transcript = texto
 
       if (tab === 'youtube') {
-        // Timeout de 12s para Vercel Free (limite real ~10s + margen de red)
+        // 30s para dar margen a Supadata (que responde en ~2-5s pero con latencia de red)
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 12000)
+        const timeoutId = setTimeout(() => controller.abort(), 30000)
 
         let transcribeRes, transcribeData
         try {
