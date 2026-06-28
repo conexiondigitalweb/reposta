@@ -134,11 +134,7 @@ export default function Reprocesar() {
 
         transcript = transcribeData.transcript
         setTranscriptSource(transcribeData.source ?? null)
-        setLoadingMsg(
-          transcribeData.source === 'whisper'
-            ? 'Audio transcrito con IA — generando formatos...'
-            : 'Subtítulos extraídos — generando formatos...'
-        )
+        setLoadingMsg('Transcript extraído — generando formatos...')
       } else {
         setLoadingMsg('Generando 6 formatos con IA...')
       }
@@ -311,9 +307,7 @@ export default function Reprocesar() {
 
         {loading && (
           <p className="text-center text-xs text-gray-600 mt-3">
-            {transcriptSource === 'whisper'
-              ? 'Transcribiendo audio con IA y generando formatos — puede tardar hasta 60 segundos.'
-              : 'Generando 6 formatos con IA — esto puede tardar entre 15 y 30 segundos.'}
+            {'Generando 6 formatos con IA — esto puede tardar entre 15 y 30 segundos.'}
           </p>
         )}
 
@@ -326,14 +320,14 @@ export default function Reprocesar() {
               </h2>
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <span className="text-xs text-gray-600">6 formatos generados</span>
-                {transcriptSource === 'whisper' && (
-                  <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
-                    Transcrito con Whisper
-                  </span>
-                )}
                 {transcriptSource === 'captions' && (
                   <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">
                     Subtítulos nativos
+                  </span>
+                )}
+                {transcriptSource === 'supadata' && (
+                  <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
+                    Transcript extraído
                   </span>
                 )}
               </div>
